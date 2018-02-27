@@ -9,7 +9,7 @@ import sys
 stocks = ['AAPL', 'AMZN', 'INTC', 'MSFT', 'SNAP']
 
 def get_position(stock):
-	with open('positions.txt', 'r') as f:
+	with open('./db/positions.txt', 'r') as f:
 	    a = json.load(f)
 	    return a[stock]
 
@@ -22,30 +22,36 @@ def get_data():
 	data={}
 	for stock in stocks:
 
-		quote_page = 'https://www.bloomberg.com/quote/{}:US'.format(stock)
+		quote_page = 'https://finance.yahoo.com/quote/{}/'.format(stock)
 		page = urllib.request.urlopen(quote_page)
 		soup = BeautifulSoup(page, 'html.parser')
-		priceText = soup.find('span', attrs={'class':'priceText__1853e8a5'})
-		priceT = priceText.text
-		price = priceT.replace(',','')
-		data.update({stock: price})
-	return data
+		prices = soup.findAll('span', attrs={"class":"Trsdu(0.3s) "})
+		bid_priceText= prices[3].text
+		priceSplit = bid_priceText.split(' ')
+		price_final = priceSplit[0].replace(',','')	
+		data.update({stock: float(price_final)})
+	return(data)
 
 def get_wap(stock):
-	filepath = 'wap/'+stock+'_wap.csv' 
+	filepath = './wap/'+stock+'_wap.csv' 
 	with open(filepath, 'r') as f:
-	  reader = csv.reader(f)
-	  trades = list(reader)
-	  total_money = 0
-	  number_stocks = 0
-	  for trade in trades:
-	  	total_money += float(trade[1])
-	  	number_stocks += float(trade[0])
-	  if number_stocks == 0:
-	  	wap = float(0)
-	  else:
-	  	wap = float(total_money / number_stocks)
-	  return wap
+		reader = csv.reader(f)
+		trades = list(reader)
+		if trades:
+			total_money=0.0
+			num_stocks= 0.0
+			wap = 0.0
+			for trade in trades:
+				if float(trade[1]) != 0.0:
+					total_money += float(trade[1])
+					num_stocks += float(trade[0])
+				else:
+					continue
+				wap = (total_money/num_stocks)
+			return wap
+		else:
+			wap = float(0)
+			return wap
 
 def upl(stock, prices):
 	position = get_position(stock)
@@ -54,30 +60,30 @@ def upl(stock, prices):
 	else:
 		wap = get_wap(stock)
 		current_price = float(prices[stock])
-		upl = ((current_price - wap) * float(position)) - float(get_rpl(stock))
+		upl = ((current_price - wap) * float(position))
 	return upl
 
-def update_rpl(stock, lists):
-	wap = float(get_wap(stock))
-	sell_price = float(lists[0])
-	quantity = float(lists[1])
-	rpl_update = (sell_price - wap)*quantity
-	with open('rpl.txt') as f:
+def update_rpl(stock, profit_from_sell):
+	with open('./db/rpl.txt') as f:
 	    a = json.load(f)
 
-	with open('rpl.txt', 'w') as f:
-		a[stock] += rpl_update
+	with open('./db/rpl.txt', 'w') as f:
+		a[stock] += profit_from_sell
 		json.dump(a, f)
 
 def get_rpl(stock):
-	with open('rpl.txt') as f:
+	with open('./db/rpl.txt') as f:
 		a = json.load(f)
 		return a[stock]
 
+
 def set_upl(stock, amount):
-	orig = upl()
+	orig = get_rpl(stock)
 	final_rpl = float(amount) - orig
-	with open('rpl.txt', 'w') as f:
+	with open('./db/rpl.txt') as f:
+	    a = json.load(f)
+
+	with open('./db/rpl.txt', 'w') as f:
 		a[stock] += final_rpl
 		json.dump(a, f)
 
@@ -94,7 +100,8 @@ def start():
 	1 - Trade
 	2 - Show Blotter
 	3 - Show P/L
-	4 - Quit 
+	4 - Quit
+	5 - Reset Program 
 
 	'''
 	)
@@ -114,6 +121,9 @@ def start():
 		print("Selected choice: 4")
 		print("Exiting program")
 		sys.exit(0)
+	if choice == "5":
+		print("Selected choice: 5")
+		reset()
 
 def display_pl():
 	global stocks
@@ -122,45 +132,45 @@ def display_pl():
 	print("Done!")
 	tab_data = []
 	for stock in stocks:
-		data=[stock,get_position(stock),prices[stock], get_wap(stock) , upl(stock, prices), get_rpl(stock)]
+		data=[stock,get_position(stock),prices[stock], get_wap(stock) , upl(stock, prices),get_rpl(stock)]
 		tab_data.append(data)
 	from tabulate import tabulate
 	print(tabulate(tab_data, headers=['Ticker', 'Position', 'Market Price', 'WAP', 'UPL', 'RPL']))
 	start()
 
 def update_position(stock, quantity):
-	with open('positions.txt') as f:
+	with open('./db/positions.txt') as f:
 	    a = json.load(f)
 
-	with open('positions.txt', 'w') as f:
+	with open('./db/positions.txt', 'w') as f:
 		a[stock] += quantity
 		json.dump(a, f)
 
 def update_cash(amount):
-	with open('cash.txt') as f:
+	with open('./db/cash.txt') as f:
 	    a = json.load(f)
 
-	with open('cash.txt', 'w') as f:
+	with open('./db/cash.txt', 'w') as f:
 		a["AMOUNT"] += amount
 		json.dump(a, f)
 
 def append_transaction(list):
-	with open('transactions.csv', 'a') as newFile:
+	with open('./db/transactions.csv', 'a') as newFile:
 	    newFileWriter = csv.writer(newFile)
 	    newFileWriter.writerow(list)
 
 def get_position(stock):
-	with open('positions.txt', 'r') as f:
+	with open('./db/positions.txt', 'r') as f:
 	    a = json.load(f)
 	    return a[stock]
 
 def get_cash():
-	with open('cash.txt', 'r') as f:
+	with open('./db/cash.txt', 'r') as f:
 	    a = json.load(f)
 	    return a["AMOUNT"]
 
 def display_blotter():
-	with open('transactions.csv', 'r') as f:
+	with open('./db/transactions.csv', 'r') as f:
 		reader = csv.reader(f)
 		transactions = list(reader)
 		if transactions:
@@ -171,19 +181,33 @@ def display_blotter():
 		start()
 	  
 def append_wap(stock,list):
-	filepath = 'wap/'+stock+'_wap.csv'  
+	filepath = './wap/'+stock+'_wap.csv'  
 	with open(filepath, 'a') as newFile:
 	    newFileWriter = csv.writer(newFile)
 	    newFileWriter.writerow(list)
 
-def get_stock_price(ticker_symbol):
-	quote_page = 'https://www.bloomberg.com/quote/{}:US'.format(ticker_symbol)
+def get_stock_sell_price(stock):
+	quote_page = 'https://finance.yahoo.com/quote/{}/'.format(stock)
 	page = urllib.request.urlopen(quote_page)
 	soup = BeautifulSoup(page, 'html.parser')
-	priceText = soup.find('span', attrs={'class':'priceText__1853e8a5'})
-	price = priceText.text
-	price = price.replace(",", "")
-	return float(price)
+	prices = soup.findAll('span', attrs={"class":"Trsdu(0.3s) "})
+	bid_priceText= prices[2].text
+	priceSplit = bid_priceText.split(' ')
+	price_final = float(priceSplit[0].replace(',',''))
+	return price_final
+
+
+def get_stock_buy_price(stock):
+	quote_page = 'https://finance.yahoo.com/quote/{}/'.format(stock)
+	page = urllib.request.urlopen(quote_page)
+	soup = BeautifulSoup(page, 'html.parser')
+	prices = soup.findAll('span', attrs={"class":"Trsdu(0.3s) "})
+	bid_priceText= prices[3].text
+	priceSplit = bid_priceText.split(' ')
+	price_final = float(priceSplit[0].replace(',',''))
+	return price_final
+
+
 
 def buy():
 	global stocks
@@ -191,7 +215,7 @@ def buy():
 	stock = (input("Enter stock symbol to buy (e.g. AMZN): ")).upper()
 	if stock in stocks:
 		print("Getting stock info...")
-		stock_price = get_stock_price(stock)
+		stock_price = get_stock_buy_price(stock)
 		print("{} is trading at ${}".format(stock.upper(), stock_price))
 		quantity=float(input("Enter quantity to buy: "))
 		cost_of_buy = quantity * stock_price
@@ -210,6 +234,7 @@ def buy():
 				update_cash(buy_total)
 				append_transaction([buy_type, buy_symbol, buy_quantity, buy_price, buy_time, cost_of_buy])
 				append_wap(buy_symbol,[buy_quantity, cost_of_buy])
+				print("Transaction executed successfully")
 				start()
 
 			if buy_choice.upper() == "N":
@@ -228,11 +253,12 @@ def sell():
 	stock = (input("Enter stock symbol to sell (e.g. AMZN): ")).upper()
 	if stock in stocks:
 		print("Getting stock info...")
-		stock_price = get_stock_price(stock)
+		stock_price = get_stock_sell_price(stock)
 		available_quantity = get_position(stock)
 		print("{} is trading at ${} and you have {} of it".format(stock.upper(), stock_price, available_quantity))
 		quantity=float(input("Enter quantity to sell: "))
 		money_from_sell = quantity * stock_price
+		rpl =  money_from_sell - (get_wap(stock) * quantity)
 
 		if quantity < available_quantity : 
 			print("Transaction will earn you ${} in cash".format(money_from_sell)) 
@@ -247,8 +273,9 @@ def sell():
 				update_position(sell_symbol, sell_quantity)
 				update_cash(sell_total)
 				append_transaction([sell_type, sell_symbol, quantity, sell_price, sell_time, sell_total])
-				update_rpl(stock, [sell_price, quantity])
+				update_rpl(stock, rpl)
 				set_upl(stock, sell_total)
+				print("Transaction executed successfully")
 				start()
 				
 			if sell_choice.upper() == "N":
@@ -278,4 +305,29 @@ def trading():
 	if side == '2':
 	 	sell()
 
+def reset():
+	global stocks
+	action = str(input("Are you sure you want to reset the program?(Y/N): "))
+	if action.upper() == "Y":
+		print("Resetting program...")
+		for stock in stocks:
+			with open("./wap/" + stock + "_wap.csv", 'w'):
+				pass
+		with open("./db/transactions.csv", 'w'):
+			pass	
+		with open("./db/cash.txt", "w") as f:
+			amount = {"AMOUNT": 10000000.0}
+			json.dump(amount, f)
+		with open("./db/positions.txt", "w") as f:
+			positions = {"AMZN": 0, "SNAP": 0, "MSFT": 0, "AAPL": 0, "INTC": 0}
+			json.dump(positions, f)
+		with open("./db/rpl.txt", "w") as f:
+			rpl = {"AMZN": 0, "SNAP": 0, "MSFT": 0, "AAPL": 0, "INTC": 0}
+			json.dump(rpl, f)
+		print("Done!")
+		start()
+	else:
+		print("Reset abandoned")
+		start()
+		
 start()

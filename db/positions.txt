@@ -1,0 +1,1 @@
+{"AAPL": 0, "MSFT": 0, "AMZN": 0, "INTC": 0, "SNAP": 0}
